@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DepartmentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,6 +28,22 @@ Route::group([
     // Route::post('/register', [AuthController::class, 'register']);
     // Route::post('/verify', [AuthController::class, 'verify']);
     Route::post('/logout', [AuthController::class, 'logout']);
+    // Route::post('/refresh', [AuthController::class, 'refresh']);
+    // Route::get('/user-profile', [AuthController::class, 'userProfile']);
+    // Route::post('/forget-password', [AuthController::class, 'forgetPassword']);
+    // Route::post('/verify-forget-password', [AuthController::class, 'verifyForgetPassword']);
+    // Route::get('/synchronize', [AuthController::class, 'synchronizeUsers']);
+});
+Route::group([
+    'middleware' => 'api',
+    'prefix' => 'departments',
+
+], function ($router) {
+    Route::get('/all', [DepartmentController::class, 'index']);
+    //Route::post('/login', [AuthController::class, 'login']);
+    // Route::post('/register', [AuthController::class, 'register']);
+    // Route::post('/verify', [AuthController::class, 'verify']);
+    //Route::post('/logout', [AuthController::class, 'logout']);
     // Route::post('/refresh', [AuthController::class, 'refresh']);
     // Route::get('/user-profile', [AuthController::class, 'userProfile']);
     // Route::post('/forget-password', [AuthController::class, 'forgetPassword']);
