@@ -39,12 +39,6 @@ class AuthController extends Controller
                 'is_email_verified' => auth('api')->getUser()->is_email_verified,
                 'email' => auth('api')->getUser()->email,
                 'profile_picture' => auth('api')->getUser()->profile_picture
-                // 'menus' => auth('api')->getUser()->menus(),
-                // 'group' => auth('api')->getUser()->group,
-                // 'user_id' => auth('api')->getUser()->id,
-                // 'first_name'  => auth('api')->getUser()->first_name,
-                // 'last_name' => auth('api')->getUser()->last_name,
-                // 'phone' => auth('api')->getUser()->email,
             ],
         ]);
     }
@@ -55,20 +49,13 @@ class AuthController extends Controller
      */
     public function login(LoginRequest $request)
     {
-
-        //$user = User::where('is_deleted', false)->where('email', $request->input('email'))->first();
-        // if ($user) {
-        //     $this->check($request->input('password'), $user->password);
-        // }
-
         $validated = $request->validated();
         if (!$token = auth('api')->attempt($validated)) {
 
             return (new UserResource(null))->additional([
-                'errors' => ['authentication' => ['Unauthorized']],
+                'errors' => ['authentication' => ['Username or Password is incorrect!']],
             ])->response()->setStatusCode(401);
         }
-
         return $this->createNewToken($token);
     }
     /**
