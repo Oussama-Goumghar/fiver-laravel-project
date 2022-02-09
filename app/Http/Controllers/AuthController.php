@@ -2,12 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ForgetPasswordRequest;
 use Illuminate\Http\Request;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
-use App\Models\User;
+use App\Http\Resources\ForgetPassResource;
 use App\Http\Resources\UserResource;
-
+use App\Mail\Authentication\AccountWating;
+use App\Mail\Authentication\UserWaiting;
+use App\Models\User;
+use Illuminate\Auth\Events\Registered;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Password;
+use stdClass;
 
 class AuthController extends Controller
 {
@@ -18,7 +25,7 @@ class AuthController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('auth:api', ['except' => ['login', 'register']]);
+        $this->middleware('auth:api', ['except' => ['login', 'register', 'forgetPassword', 'verifyForgetPassword']]);
     }
     /**
      * Get the token array structure.
@@ -35,6 +42,7 @@ class AuthController extends Controller
                 'access_token' => $token,
                 'token_type' => 'bearer',
                 'expires_in' => auth('api')->factory()->getTTL() * 24 * 7,
+                'email_verified_at' => auth('api')->getUser()->email_verified_at,
                 'name'  => auth('api')->getUser()->name,
                 'role' => auth('api')->getUser()->role,
                 'is_email_verified' => auth('api')->getUser()->is_email_verified,
@@ -67,12 +75,11 @@ class AuthController extends Controller
     public function logout()
     {
         auth('api')->logout();
-
         return (new UserResource(null))->additional([
             'errors' => null,
         ])->response()->setStatusCode(200);
     }
-     /**
+    /**
      * Register a User.
      *
      * @return \Illuminate\Http\JsonResponse
@@ -80,19 +87,69 @@ class AuthController extends Controller
     public function register(RegisterRequest $request)
     {
         $validated = $request->validated();
-
-        $userData = array_merge(
+        $filename = null;
+        $data = array_merge(
             $validated,
             ['password' => bcrypt($request->password)]
         );
         $cap = ucwords($request->input('name'));
-        $userData['name'] = $cap;
-        $userData['email'] = $request->input('email');
-        $userData['deptid'] = $request->input('deptid');
-
-        return (new UserResource(null))->additional([
+        $data['name'] = $cap;
+        $data['email'] = $request->input('email');
+        $data['deptid'] = $request->input('deptid');
+        $data['employeeid'] = $request->input('employeeid');
+        $data['role'] = 'user';
+        if ($request->hasfile('profile_pic')) {
+            $avatar = $request->file('profile_pic');
+            $filename = $data['employeeid'] . '.' . $avatar->getClientOriginalExtension();
+            $destination_path = public_path('storage/profile');
+            $avatar->move($destination_path, $filename);
+        }
+        $data['profile_picture'] = $filename;
+        $user = User::create($data);
+        event(new Registered($user));
+        Mail::to($data['email'])->send(new AccountWating($data));
+        $admin = User::where('is_deleted', false)->where('role', 'admin')->pluck('email');
+        Mail::to($admin)->send(new UserWaiting($data));
+        return (new UserResource($user))->additional([
             'errors' => null,
         ])->response()->setStatusCode(201);
+    }
+    /**
+     *
+     * Forget password
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function forgetPassword(ForgetPasswordRequest $request)
+    {
+        $input = $request->only('email');
+        $response =  Password::sendResetLink($input);
+        if ($response == Password::RESET_LINK_SENT) {
+            $message = "Mail send successfully";
+        } else {
+            $message = "Email could not be sent to this email address";
+        }
+        return (new UserResource(null))->additional([
+            'errors' => null,
+            'message' => $message
+        ])->response()->setStatusCode(200);
+    }
+    public function reset()
+    {
+        $credentials = request()->validate([
+            'email' => 'required|email',
+            'token' => 'required|string',
+            'password' => 'required|string|confirmed'
+        ]);
 
+        $reset_password_status = Password::reset($credentials, function ($user, $password) {
+            $user->password = $password;
+            $user->save();
+        });
+
+        if ($reset_password_status == Password::INVALID_TOKEN) {
+            return response()->json(["msg" => "Invalid token provided"], 400);
+        }
+        return response()->json(["msg" => "Password has been successfully changed"]);
     }
 }

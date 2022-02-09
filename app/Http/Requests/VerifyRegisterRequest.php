@@ -5,9 +5,8 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Http\Exceptions\HttpResponseException;
-use Illuminate\Validation\Rule;
 
-class RegisterRequest extends FormRequest
+class VerifyRegisterRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -27,13 +26,8 @@ class RegisterRequest extends FormRequest
     public function rules()
     {
         return [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|confirmed|min:6|regex:/^(?=.*[a-z A-Z])(?=.*\d).+$/',
-            'profile_pic' => 'nullable|image|mimes:jpg,jpeg,png,bmp,tiff|max:4096',
-            'deptid' => 'nullable|integer',
-            'employeeid' => 'required|unique:users',
-            'signup_terms' => 'accepted'
+            //'otp' => 'required|integer|min:1000',
+            'email' => 'required|email|max:255|unique:users'
         ];
     }
      /**
@@ -46,6 +40,7 @@ class RegisterRequest extends FormRequest
     {
         if ($validator->fails()) {
             $errors = (new ValidationException($validator))->errors();
+
             throw new HttpResponseException(
                 response()->json(['errors' => $errors], 400)
             );
