@@ -6,6 +6,7 @@ use App\Http\Requests\ForgetPasswordRequest;
 use Illuminate\Http\Request;
 use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
+use App\Http\Requests\ResetPasswordRequest;
 use App\Http\Resources\ForgetPassResource;
 use App\Http\Resources\UserResource;
 use App\Mail\Authentication\AccountWating;
@@ -25,7 +26,7 @@ class AuthController extends Controller
      */
     public function __construct()
     {
-        $this->middleware('auth:api', ['except' => ['login', 'register', 'forgetPassword', 'verifyForgetPassword']]);
+        $this->middleware('auth:api', ['except' => ['login', 'register', 'forgetPassword', 'reset']]);
     }
 
     /**
@@ -140,22 +141,16 @@ class AuthController extends Controller
             'message' => $message
         ])->response()->setStatusCode(200);
     }
-    public function reset()
+    public function reset(ResetPasswordRequest $request)
     {
-        $credentials = request()->validate([
-            'email' => 'required|email',
-            'token' => 'required|string',
-            'password' => 'required|string|confirmed'
-        ]);
-
-        $reset_password_status = Password::reset($credentials, function ($user, $password) {
-            $user->password = $password;
+        $reset_password_status = Password::reset($request->only('password', 'password_confirmation','token','email'), function ($user, $password) {
+            $user->password = bcrypt($password);
             $user->save();
         });
 
         if ($reset_password_status == Password::INVALID_TOKEN) {
-            return response()->json(["msg" => "Invalid token provided"], 400);
+            return response()->json(["errors" =>  ["Invalid token provided"]], 400);
         }
-        return response()->json(["msg" => "Password has been successfully changed"]);
+        return response()->json(["msg" => "Password has been successfully changed", "errors" => []], 200);
     }
 }
