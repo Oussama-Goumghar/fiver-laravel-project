@@ -27,6 +27,7 @@ class AuthController extends Controller
     {
         $this->middleware('auth:api', ['except' => ['login', 'register', 'forgetPassword', 'verifyForgetPassword']]);
     }
+
     /**
      * Get the token array structure.
      *
@@ -124,10 +125,15 @@ class AuthController extends Controller
     {
         $input = $request->only('email');
         $response =  Password::sendResetLink($input);
-        if ($response == Password::RESET_LINK_SENT) {
-            $message = "Mail send successfully";
+        $user = User::where('is_deleted', false)->where('email', $request->email)->first();
+        if ($user == null) {
+            $message = "We could not find a user with this email address";
         } else {
-            $message = "Email could not be sent to this email address";
+            if ($response == Password::RESET_LINK_SENT) {
+                $message = "Mail send successfully";
+            } else {
+                $message = "Email could not be sent to this email address";
+            }
         }
         return (new UserResource(null))->additional([
             'errors' => null,
